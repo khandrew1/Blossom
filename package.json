@@ -1,0 +1,31 @@
+{
+  "name": "blossom-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic event-registration MCP server for the Blossom Hill Cafe demo.",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "scripts": {
+    "build": "mcp-use build",
+    "dev": "mcp-use dev",
+    "start": "mcp-use start",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "mcp-use": "^2.0.0-beta.61",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "tsx": "^4.20.6",
+    "typescript": "^7.0.2"
+  }
+}
