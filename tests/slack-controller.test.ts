@@ -119,6 +119,12 @@ describe("Slack demo controller", () => {
         { token: "xoxb-ryan", ts: "2" },
       ]
     );
+    assert.deepEqual(
+      calls
+        .filter(({ method }) => method === "chat.delete")
+        .map(({ body }) => body.as_user),
+      [true, true]
+    );
     assert.equal(
       calls.filter(({ method }) => method === "conversations.history").length,
       2
