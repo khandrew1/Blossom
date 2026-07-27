@@ -163,7 +163,7 @@ export async function resetDemoMessages(
       await slackApi(
         "chat.delete",
         token,
-        { channel: config.channelId, ts: message.ts },
+        { channel: config.channelId, ts: message.ts, as_user: true },
         request
       );
       deleted += 1;
