@@ -5,6 +5,7 @@ import {
   isSlackAgent,
   loadSlackControllerConfig,
   postDemoMessage,
+  resetDemoMessages,
   SLACK_CONTROLLER_HTML,
 } from "../src/slack-controller.js";
 
@@ -57,5 +58,69 @@ describe("Slack demo controller", () => {
       channel: "C123",
       text: DEMO_MESSAGES.jenny,
     });
+  });
+
+  it("paginates history and lets each bot delete only its own messages", async () => {
+    const calls: Array<{ method: string; token: string; body: Record<string, unknown> }> = [];
+    const fakeFetch: typeof fetch = async (url, init) => {
+      const method = String(url).split("/").at(-1)!;
+      const token = new Headers(init?.headers).get("authorization")!.replace("Bearer ", "");
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      calls.push({ method, token, body });
+
+      let result: Record<string, unknown>;
+      if (method === "auth.test") {
+        result = { ok: true, user_id: token === "xoxb-jenny" ? "UJENNY" : "URYAN" };
+      } else if (method === "conversations.history") {
+        const cursor = body.cursor;
+        result = cursor
+          ? {
+              ok: true,
+              messages: [{ ts: "3", user: "SOMEONE_ELSE" }],
+              response_metadata: { next_cursor: "" },
+            }
+          : {
+              ok: true,
+              messages: [
+                { ts: token === "xoxb-jenny" ? "1" : "2", user: token === "xoxb-jenny" ? "UJENNY" : "URYAN" },
+              ],
+              response_metadata: { next_cursor: "page-2" },
+            };
+      } else if (method === "chat.delete") {
+        result = { ok: true };
+      } else {
+        throw new Error(`Unexpected Slack method: ${method}`);
+      }
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+
+    const deleted = await resetDemoMessages(
+      {
+        controllerKey: "key",
+        channelId: "C123",
+        tokens: { jenny: "xoxb-jenny", ryan: "xoxb-ryan" },
+      },
+      fakeFetch
+    );
+
+    assert.equal(deleted, 2);
+    assert.deepEqual(
+      calls.filter(({ method }) => method === "chat.delete").map(({ token, body }) => ({
+        token,
+        ts: body.ts,
+      })),
+      [
+        { token: "xoxb-jenny", ts: "1" },
+        { token: "xoxb-ryan", ts: "2" },
+      ]
+    );
+    assert.equal(
+      calls.filter(({ method }) => method === "conversations.history").length,
+      4
+    );
   });
 });

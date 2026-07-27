@@ -85,6 +85,14 @@ The controller uses these routes:
 - `GET /demo/slack?key=...` — phone UI
 - `POST /demo/slack/send/jenny` — sends Jenny's planted waitlist message
 - `POST /demo/slack/send/ryan` — sends Ryan's planted allergy reply
+- `POST /demo/slack/reset` — deletes all Jenny- and Ryan-authored messages in the configured demo channel
+
+Each Slack bot needs the following Bot Token OAuth scopes:
+
+- `chat:write` — post its planted message
+- `groups:history` — find its own messages in the private demo channel before reset
+
+Both bot users must remain members of the private demo channel. Reset checks paginated channel history, then uses each bot token to call `chat.delete` only for messages owned by that bot. The controller only creates top-level channel messages; it intentionally does not create or scan thread replies because Slack bot tokens cannot use `conversations.replies` for private-channel threads. After adding `groups:history`, reinstall each Slack app to the workspace so the new scope is granted.
 
 The existing `slack-agents/` folder is retained as the original standalone implementation and reference, but it is not required by the root build or deployment.
 

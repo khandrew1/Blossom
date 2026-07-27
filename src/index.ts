@@ -12,6 +12,7 @@ import {
   isSlackAgent,
   loadSlackControllerConfig,
   postDemoMessage,
+  resetDemoMessages,
   SLACK_CONTROLLER_HTML,
   type SlackAgent,
 } from "./slack-controller.js";
@@ -97,6 +98,26 @@ server.post("/demo/slack/send/:agent", async (context) => {
     slackCooldowns.delete(agent);
     console.error(`Failed to post as ${agent}:`, error);
     return context.json({ ok: false, error: "Slack did not accept the message" }, 502);
+  }
+});
+
+server.post("/demo/slack/reset", async (context) => {
+  let config;
+  try {
+    config = loadSlackControllerConfig();
+  } catch {
+    return context.json({ ok: false, error: "Controller is not configured" }, 503);
+  }
+  if (context.req.header("x-blossom-controller-key") !== config.controllerKey) {
+    return context.json({ ok: false, error: "Not authorized" }, 401);
+  }
+
+  try {
+    const deleted = await resetDemoMessages(config);
+    return context.json({ ok: true, deleted });
+  } catch (error) {
+    console.error("Failed to reset Slack demo messages:", error);
+    return context.json({ ok: false, error: "Slack demo reset failed" }, 502);
   }
 });
 
