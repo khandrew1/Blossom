@@ -60,7 +60,7 @@ describe("Slack demo controller", () => {
     });
   });
 
-  it("paginates history and lets each bot delete only its own messages", async () => {
+  it("paginates shared history and lets each bot delete only its own messages", async () => {
     const calls: Array<{ method: string; token: string; body: Record<string, unknown> }> = [];
     const fakeFetch: typeof fetch = async (url, init) => {
       const method = String(url).split("/").at(-1)!;
@@ -82,7 +82,8 @@ describe("Slack demo controller", () => {
           : {
               ok: true,
               messages: [
-                { ts: token === "xoxb-jenny" ? "1" : "2", user: token === "xoxb-jenny" ? "UJENNY" : "URYAN" },
+                { ts: "1", user: "UJENNY" },
+                { ts: "2", user: "URYAN" },
               ],
               response_metadata: { next_cursor: "page-2" },
             };
@@ -120,7 +121,57 @@ describe("Slack demo controller", () => {
     );
     assert.equal(
       calls.filter(({ method }) => method === "conversations.history").length,
-      4
+      2
+    );
+  });
+
+  it("falls back to the other bot when the first cannot read channel history", async () => {
+    const calls: Array<{ method: string; token: string; body: Record<string, unknown> }> = [];
+    const fakeFetch: typeof fetch = async (url, init) => {
+      const method = String(url).split("/").at(-1)!;
+      const token = new Headers(init?.headers).get("authorization")!.replace("Bearer ", "");
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      calls.push({ method, token, body });
+
+      let result: Record<string, unknown>;
+      if (method === "auth.test") {
+        result = { ok: true, user_id: token === "xoxb-jenny" ? "UJENNY" : "URYAN" };
+      } else if (method === "conversations.history" && token === "xoxb-jenny") {
+        result = { ok: false, error: "missing_scope" };
+      } else if (method === "conversations.history") {
+        result = {
+          ok: true,
+          messages: [
+            { ts: "1", user: "UJENNY" },
+            { ts: "2", user: "URYAN" },
+          ],
+          response_metadata: { next_cursor: "" },
+        };
+      } else if (method === "chat.delete") {
+        result = { ok: true };
+      } else {
+        throw new Error(`Unexpected Slack method: ${method}`);
+      }
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+
+    const deleted = await resetDemoMessages(
+      {
+        controllerKey: "key",
+        channelId: "C123",
+        tokens: { jenny: "xoxb-jenny", ryan: "xoxb-ryan" },
+      },
+      fakeFetch
+    );
+
+    assert.equal(deleted, 2);
+    assert.deepEqual(
+      calls.filter(({ method }) => method === "conversations.history").map(({ token }) => token),
+      ["xoxb-jenny", "xoxb-ryan"]
     );
   });
 });
