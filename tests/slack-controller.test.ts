@@ -125,7 +125,7 @@ describe("Slack demo controller", () => {
       calls
         .filter(({ method }) => method === "chat.delete")
         .map(({ body }) => body.as_user),
-      [true, true]
+      [false, false]
     );
     assert.equal(
       calls.filter(({ method }) => method === "conversations.history").length,
