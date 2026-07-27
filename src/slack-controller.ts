@@ -124,6 +124,7 @@ export async function resetDemoMessages(
   request: typeof fetch = fetch
 ): Promise<number> {
   let deleted = 0;
+  const userIds = new Map<SlackAgent, string>();
 
   for (const agent of SLACK_AGENTS) {
     const token = config.tokens[agent];
@@ -131,10 +132,31 @@ export async function resetDemoMessages(
     if (!identity.user_id) {
       throw new Error(`Slack did not return the ${agent} bot user ID`);
     }
+    userIds.set(agent, identity.user_id);
+  }
 
-    const messages = await listChannelMessages(token, config.channelId, request);
+  let messages: SlackMessage[] | undefined;
+  let historyError: unknown;
+  for (const agent of SLACK_AGENTS) {
+    try {
+      messages = await listChannelMessages(
+        config.tokens[agent],
+        config.channelId,
+        request
+      );
+      break;
+    } catch (error) {
+      historyError = error;
+    }
+  }
+  if (!messages) {
+    throw historyError ?? new Error("No Slack bot could read the demo channel");
+  }
+
+  for (const agent of SLACK_AGENTS) {
+    const token = config.tokens[agent];
     const owned = messages.filter(
-      (message) => message.user === identity.user_id && message.ts
+      (message) => message.user === userIds.get(agent) && message.ts
     );
 
     for (const message of owned) {
