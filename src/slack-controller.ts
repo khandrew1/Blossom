@@ -12,6 +12,7 @@ export interface SlackControllerConfig {
   controllerKey: string;
   channelId: string;
   tokens: Record<SlackAgent, string>;
+  resetToken?: string;
 }
 
 function required(name: string, env: NodeJS.ProcessEnv): string {
@@ -30,6 +31,7 @@ export function loadSlackControllerConfig(
       jenny: required("SLACK_JENNY_BOT_TOKEN", env),
       ryan: required("SLACK_RYAN_BOT_TOKEN", env),
     },
+    resetToken: env.SLACK_ADMIN_USER_TOKEN?.trim() || undefined,
   };
 }
 
@@ -155,6 +157,7 @@ export async function resetDemoMessages(
 
   for (const agent of SLACK_AGENTS) {
     const token = config.tokens[agent];
+    const deleteToken = config.resetToken ?? token;
     const owned = messages.filter(
       (message) => message.user === userIds.get(agent) && message.ts
     );
@@ -162,7 +165,7 @@ export async function resetDemoMessages(
     for (const message of owned) {
       await slackApi(
         "chat.delete",
-        token,
+        deleteToken,
         { channel: config.channelId, ts: message.ts, as_user: true },
         request
       );
