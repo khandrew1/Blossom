@@ -123,7 +123,7 @@ export const getRegistration = server.tool(
     view: {
       name: "registration-detail",
       description: "A focused registration detail card.",
-      prefersBorder: true,
+      prefersBorder: false,
     },
   },
   async ({ query }) => {
@@ -170,7 +170,7 @@ export const updateRegistrationStatus = server.tool(
     view: {
       name: "registration-status",
       description: "Confirmation card for an RSVP status update.",
-      prefersBorder: true,
+      prefersBorder: false,
     },
   },
   async ({ query, status }) => {
