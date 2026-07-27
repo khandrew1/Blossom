@@ -163,12 +163,39 @@ export async function resetDemoMessages(
     );
 
     for (const message of owned) {
-      await slackApi(
-        "chat.delete",
-        deleteToken,
-        { channel: config.channelId, ts: message.ts, as_user: false },
-        request
-      );
+      const attempts = [
+        { token, asUser: false },
+        { token, asUser: true },
+        { token, asUser: undefined },
+        ...(deleteToken === token
+          ? []
+          : [
+              { token: deleteToken, asUser: false },
+              { token: deleteToken, asUser: true },
+              { token: deleteToken, asUser: undefined },
+            ]),
+      ];
+      let deleteError: unknown;
+      let didDelete = false;
+      for (const attempt of attempts) {
+        try {
+          await slackApi(
+            "chat.delete",
+            attempt.token,
+            {
+              channel: config.channelId,
+              ts: message.ts,
+              ...(attempt.asUser === undefined ? {} : { as_user: attempt.asUser }),
+            },
+            request
+          );
+          didDelete = true;
+          break;
+        } catch (error) {
+          deleteError = error;
+        }
+      }
+      if (!didDelete) throw deleteError;
       deleted += 1;
     }
   }
