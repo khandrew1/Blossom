@@ -65,6 +65,9 @@ export async function postDemoMessage(
 interface SlackMessage {
   ts?: string;
   user?: string;
+  bot_id?: string;
+  app_id?: string;
+  subtype?: string;
 }
 
 interface SlackApiResult {
@@ -195,7 +198,18 @@ export async function resetDemoMessages(
           deleteError = error;
         }
       }
-      if (!didDelete) throw deleteError;
+      if (!didDelete) {
+        console.error("Slack demo message ownership mismatch", {
+          agent,
+          expectedUser: userIds.get(agent),
+          messageUser: message.user,
+          botId: message.bot_id,
+          appId: message.app_id,
+          subtype: message.subtype,
+          ts: message.ts,
+        });
+        throw deleteError;
+      }
       deleted += 1;
     }
   }
