@@ -15,7 +15,7 @@ Blossom exposes exactly four tools:
 - `get_registration` — exact individual lookup by ID, full name, or email. Julian Estrada is initially waitlisted.
 - `update_registration_status` — an idempotent local write with the updated registration and a result card.
 
-There is intentionally no `summarize_registrations` tool. Slack, Custom Ink, Notion, purchase simulation, and notification watching are also outside this server.
+There is intentionally no `summarize_registrations` tool. Custom Ink, Notion, purchase simulation, and notification watching remain outside this server. A small, non-MCP Slack demo controller is served alongside the MCP endpoint for staging the Jenny and Ryan messages.
 
 ## Seed data and privacy
 
@@ -60,6 +60,33 @@ The MCP endpoint is:
 ```text
 http://localhost:3000/mcp
 ```
+
+## Slack demo controller
+
+The deployed Blossom process also serves the phone-friendly two-button controller:
+
+```text
+https://YOUR-BLOSSOM-HOST/demo/slack?key=YOUR_CONTROLLER_KEY
+```
+
+It posts the fixed Jenny and Ryan demo messages without exposing their bot tokens to the browser. Configure these server-side environment variables in the deployment:
+
+```text
+SLACK_JENNY_BOT_TOKEN=xoxb-...
+SLACK_RYAN_BOT_TOKEN=xoxb-...
+SLACK_DEMO_CHANNEL_ID=C...
+SLACK_CONTROLLER_KEY=a-long-random-demo-key
+```
+
+The page and its POST endpoint return an error when those variables are absent. The controller key is required for both loading the page and sending a message; keep the keyed URL private. Each button has a 2.5-second client lock and the server independently enforces a 2-second per-agent cooldown.
+
+The controller uses these routes:
+
+- `GET /demo/slack?key=...` — phone UI
+- `POST /demo/slack/send/jenny` — sends Jenny's planted waitlist message
+- `POST /demo/slack/send/ryan` — sends Ryan's planted allergy reply
+
+The existing `slack-agents/` folder is retained as the original standalone implementation and reference, but it is not required by the root build or deployment.
 
 `mcp-use dev` owns the HTTP listener, discovers `views/*/view.tsx`, and serves the app assets. To create and run a production build:
 

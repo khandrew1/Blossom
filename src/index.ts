@@ -8,6 +8,13 @@ import {
   REGISTRATION_STATUSES,
   updateRegistrationStatus as writeRegistrationStatus,
 } from "./data.js";
+import {
+  isSlackAgent,
+  loadSlackControllerConfig,
+  postDemoMessage,
+  SLACK_CONTROLLER_HTML,
+  type SlackAgent,
+} from "./slack-controller.js";
 
 const registrationSchema = z.object({
   id: z.string(),
@@ -44,6 +51,53 @@ const server = new MCPServer({
   description:
     "A deterministic fictional event-registration service for the Blossom Hill Cafe pop-up.",
   basePath: "/mcp",
+});
+
+const slackCooldowns = new Map<SlackAgent, number>();
+const SLACK_COOLDOWN_MS = 2_000;
+
+server.get("/demo/slack", (context) => {
+  try {
+    const config = loadSlackControllerConfig();
+    if (context.req.query("key") !== config.controllerKey) {
+      return context.text("Not found", 404);
+    }
+    return context.html(SLACK_CONTROLLER_HTML);
+  } catch {
+    return context.text("Slack demo controller is not configured", 503);
+  }
+});
+
+server.post("/demo/slack/send/:agent", async (context) => {
+  const agent = context.req.param("agent");
+  if (!isSlackAgent(agent)) {
+    return context.json({ ok: false, error: "Unknown agent" }, 404);
+  }
+
+  let config;
+  try {
+    config = loadSlackControllerConfig();
+  } catch {
+    return context.json({ ok: false, error: "Controller is not configured" }, 503);
+  }
+  if (context.req.header("x-blossom-controller-key") !== config.controllerKey) {
+    return context.json({ ok: false, error: "Not authorized" }, 401);
+  }
+
+  const now = Date.now();
+  if (now - (slackCooldowns.get(agent) ?? 0) < SLACK_COOLDOWN_MS) {
+    return context.json({ ok: false, error: "Please wait before sending again" }, 429);
+  }
+
+  slackCooldowns.set(agent, now);
+  try {
+    await postDemoMessage(agent, config);
+    return context.json({ ok: true, agent });
+  } catch (error) {
+    slackCooldowns.delete(agent);
+    console.error(`Failed to post as ${agent}:`, error);
+    return context.json({ ok: false, error: "Slack did not accept the message" }, 502);
+  }
 });
 
 export const getEventOverview = server.tool(
