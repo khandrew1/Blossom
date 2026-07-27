@@ -16,12 +16,10 @@ describe("Slack demo controller", () => {
       SLACK_DEMO_CHANNEL_ID: "C123",
       SLACK_JENNY_BOT_TOKEN: "xoxb-jenny",
       SLACK_RYAN_BOT_TOKEN: "xoxb-ryan",
-      SLACK_ADMIN_USER_TOKEN: "xoxp-admin",
     });
 
     assert.equal(config.channelId, "C123");
     assert.equal(config.tokens.jenny, "xoxb-jenny");
-    assert.equal(config.resetToken, "xoxp-admin");
     assert.doesNotMatch(SLACK_CONTROLLER_HTML, /xoxb-/);
   });
 
@@ -84,8 +82,9 @@ describe("Slack demo controller", () => {
           : {
               ok: true,
               messages: [
-                { ts: "1", user: "UJENNY" },
-                { ts: "2", user: "URYAN" },
+                { ts: "1", user: "UJENNY", text: DEMO_MESSAGES.jenny },
+                { ts: "2", user: "URYAN", text: DEMO_MESSAGES.ryan },
+                { ts: "join", user: "UJENNY", subtype: "channel_join" },
               ],
               response_metadata: { next_cursor: "page-2" },
             };
@@ -121,12 +120,6 @@ describe("Slack demo controller", () => {
         { token: "xoxb-ryan", ts: "2" },
       ]
     );
-    assert.deepEqual(
-      calls
-        .filter(({ method }) => method === "chat.delete")
-        .map(({ body }) => body.as_user),
-      [false, false]
-    );
     assert.equal(
       calls.filter(({ method }) => method === "conversations.history").length,
       2
@@ -150,8 +143,8 @@ describe("Slack demo controller", () => {
         result = {
           ok: true,
           messages: [
-            { ts: "1", user: "UJENNY" },
-            { ts: "2", user: "URYAN" },
+            { ts: "1", user: "UJENNY", text: DEMO_MESSAGES.jenny },
+            { ts: "2", user: "URYAN", text: DEMO_MESSAGES.ryan },
           ],
           response_metadata: { next_cursor: "" },
         };
@@ -183,57 +176,4 @@ describe("Slack demo controller", () => {
     );
   });
 
-  it("falls back to an admin user token when bot authorship modes are rejected", async () => {
-    const calls: Array<{ method: string; token: string }> = [];
-    const fakeFetch: typeof fetch = async (url, init) => {
-      const method = String(url).split("/").at(-1)!;
-      const token = new Headers(init?.headers).get("authorization")!.replace("Bearer ", "");
-      calls.push({ method, token });
-
-      const result =
-        method === "auth.test"
-          ? { ok: true, user_id: token === "xoxb-jenny" ? "UJENNY" : "URYAN" }
-          : method === "conversations.history"
-            ? {
-                ok: true,
-                messages: [
-                  { ts: "1", user: "UJENNY" },
-                  { ts: "2", user: "URYAN" },
-                ],
-                response_metadata: { next_cursor: "" },
-              }
-            : token === "xoxp-admin"
-              ? { ok: true }
-              : { ok: false, error: "cant_delete_message" };
-
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    };
-
-    await resetDemoMessages(
-      {
-        controllerKey: "key",
-        channelId: "C123",
-        tokens: { jenny: "xoxb-jenny", ryan: "xoxb-ryan" },
-        resetToken: "xoxp-admin",
-      },
-      fakeFetch
-    );
-
-    assert.deepEqual(
-      calls.filter(({ method }) => method === "chat.delete").map(({ token }) => token),
-      [
-        "xoxb-jenny",
-        "xoxb-jenny",
-        "xoxb-jenny",
-        "xoxp-admin",
-        "xoxb-ryan",
-        "xoxb-ryan",
-        "xoxb-ryan",
-        "xoxp-admin",
-      ]
-    );
-  });
 });
