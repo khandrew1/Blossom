@@ -183,7 +183,7 @@ describe("Slack demo controller", () => {
     );
   });
 
-  it("uses an admin user token to delete messages when configured", async () => {
+  it("falls back to an admin user token when bot authorship modes are rejected", async () => {
     const calls: Array<{ method: string; token: string }> = [];
     const fakeFetch: typeof fetch = async (url, init) => {
       const method = String(url).split("/").at(-1)!;
@@ -202,7 +202,9 @@ describe("Slack demo controller", () => {
                 ],
                 response_metadata: { next_cursor: "" },
               }
-            : { ok: true };
+            : token === "xoxp-admin"
+              ? { ok: true }
+              : { ok: false, error: "cant_delete_message" };
 
       return new Response(JSON.stringify(result), {
         status: 200,
@@ -222,7 +224,16 @@ describe("Slack demo controller", () => {
 
     assert.deepEqual(
       calls.filter(({ method }) => method === "chat.delete").map(({ token }) => token),
-      ["xoxp-admin", "xoxp-admin"]
+      [
+        "xoxb-jenny",
+        "xoxb-jenny",
+        "xoxb-jenny",
+        "xoxp-admin",
+        "xoxb-ryan",
+        "xoxb-ryan",
+        "xoxb-ryan",
+        "xoxp-admin",
+      ]
     );
   });
 });
