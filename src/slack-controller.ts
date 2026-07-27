@@ -12,7 +12,6 @@ export interface SlackControllerConfig {
   controllerKey: string;
   channelId: string;
   tokens: Record<SlackAgent, string>;
-  resetToken?: string;
 }
 
 function required(name: string, env: NodeJS.ProcessEnv): string {
@@ -31,7 +30,6 @@ export function loadSlackControllerConfig(
       jenny: required("SLACK_JENNY_BOT_TOKEN", env),
       ryan: required("SLACK_RYAN_BOT_TOKEN", env),
     },
-    resetToken: env.SLACK_ADMIN_USER_TOKEN?.trim() || undefined,
   };
 }
 
@@ -65,8 +63,7 @@ export async function postDemoMessage(
 interface SlackMessage {
   ts?: string;
   user?: string;
-  bot_id?: string;
-  app_id?: string;
+  text?: string;
   subtype?: string;
 }
 
@@ -160,56 +157,20 @@ export async function resetDemoMessages(
 
   for (const agent of SLACK_AGENTS) {
     const token = config.tokens[agent];
-    const deleteToken = config.resetToken ?? token;
     const owned = messages.filter(
-      (message) => message.user === userIds.get(agent) && message.ts
+      (message) =>
+        message.user === userIds.get(agent) &&
+        message.text === DEMO_MESSAGES[agent] &&
+        message.ts
     );
 
     for (const message of owned) {
-      const attempts = [
-        { token, asUser: false },
-        { token, asUser: true },
-        { token, asUser: undefined },
-        ...(deleteToken === token
-          ? []
-          : [
-              { token: deleteToken, asUser: false },
-              { token: deleteToken, asUser: true },
-              { token: deleteToken, asUser: undefined },
-            ]),
-      ];
-      let deleteError: unknown;
-      let didDelete = false;
-      for (const attempt of attempts) {
-        try {
-          await slackApi(
-            "chat.delete",
-            attempt.token,
-            {
-              channel: config.channelId,
-              ts: message.ts,
-              ...(attempt.asUser === undefined ? {} : { as_user: attempt.asUser }),
-            },
-            request
-          );
-          didDelete = true;
-          break;
-        } catch (error) {
-          deleteError = error;
-        }
-      }
-      if (!didDelete) {
-        console.error("Slack demo message ownership mismatch", {
-          agent,
-          expectedUser: userIds.get(agent),
-          messageUser: message.user,
-          botId: message.bot_id,
-          appId: message.app_id,
-          subtype: message.subtype,
-          ts: message.ts,
-        });
-        throw deleteError;
-      }
+      await slackApi(
+        "chat.delete",
+        token,
+        { channel: config.channelId, ts: message.ts },
+        request
+      );
       deleted += 1;
     }
   }
