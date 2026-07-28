@@ -242,11 +242,6 @@ export const updateRegistrationStatus = server.tool(
       idempotentHint: true,
       openWorldHint: false,
     },
-    view: {
-      name: "registration-status",
-      description: "Confirmation card for an RSVP status update.",
-      prefersBorder: false,
-    },
   },
   async ({ query, status }) => {
     const update = writeRegistrationStatus(query, status);

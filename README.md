@@ -13,7 +13,7 @@ Blossom exposes exactly four tools:
 - `get_event_overview` — shallow event facts and a polished event card. Its `confirmedCount` is an explicit 150-person demo estimate (`confirmedCountBasis: "demo_estimate"`).
 - `list_registrations` — confirmed by default, explicit field selection, and pagination. It returns rows only; the model computes counts and aggregates.
 - `get_registration` — exact individual lookup by ID, full name, or email. Julian Estrada is initially waitlisted.
-- `update_registration_status` — an idempotent local write with the updated registration and a result card.
+- `update_registration_status` — an idempotent local write with the updated registration.
 
 There is intentionally no `summarize_registrations` tool. Custom Ink, Notion, purchase simulation, and notification watching remain outside this server. A small, non-MCP Slack demo controller is served alongside the MCP endpoint for staging the Jenny and Ryan messages.
 
