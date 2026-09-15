@@ -8,9 +8,12 @@ import {
   updateRegistrationStatus,
 } from "../src/data.js";
 import {
+  generateUi,
   getEventOverview as overviewTool,
   getRegistration,
+  getRoles,
   listRegistrations as listTool,
+  updateRoles,
   updateRegistrationStatus as updateTool,
 } from "../src/index.js";
 
@@ -18,15 +21,26 @@ beforeEach(resetRegistrations);
 afterEach(resetRegistrations);
 
 describe("Blossom tool surface", () => {
-  it("exports exactly the four agreed tool references", () => {
+  it("exports the registration, role, and generated UI tools", () => {
     assert.deepEqual(
-      [overviewTool.name, listTool.name, getRegistration.name, updateTool.name].sort(),
       [
+        overviewTool.name,
+        listTool.name,
+        getRegistration.name,
+        updateTool.name,
+        getRoles.name,
+        updateRoles.name,
+        generateUi.name,
+      ].sort(),
+      [
+        "generate_ui",
         "get_event_overview",
         "get_registration",
+        "get_roles",
         "list_registrations",
+        "update_roles",
         "update_registration_status",
-      ]
+      ].sort()
     );
   });
 });

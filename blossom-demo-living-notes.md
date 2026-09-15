@@ -1,10 +1,10 @@
 # Blossom MCP v2 Launch Demo — Living Notes
 
-_Status: concept framing established; no software built._
+_Status: role tools and streamed generated UI implemented; full demo remains deterministic._
 
 ## One-line concept
 
-Use a deliberately minimal, fictional event-registration MCP called **Blossom** to plan supplies for **Blossom Hill Cafe**, a launch-party event roughly one month away. Turn privacy-safe registration insights into a Slack allergy follow-up, simulate a Custom Ink shirt order in a separate Codex thread, then convert that thread’s result into an expense report saved in Notion.
+Use a deliberately minimal, fictional event-registration MCP called **Blossom** to coordinate **Blossom Hill Cafe**, a launch-party event roughly one month away. Open with a real-time generated staff-role UI and a live role switch, then turn privacy-safe registration insights into a Slack allergy follow-up, handle Jenny’s request to admit her waitlisted boyfriend Julian, simulate a Custom Ink shirt order in a separate Codex thread, and save its expense report in Notion.
 
 ## Chosen story
 
@@ -15,13 +15,18 @@ Use a deliberately minimal, fictional event-registration MCP called **Blossom** 
 
 ## Main demo arc
 
-1. Query registrations and aggregate T-shirt sizes.
-2. Report the quantity needed for each size.
-3. Use Blossom’s allergy insight for the privacy-safe Slack follow-up to Ryan.
-4. Have a separate Codex thread handle the Custom Ink T-shirt purchase flow with clearly simulated/mock order data.
-5. After the shirt-order thread finishes, have the main assistant read its result.
-6. Generate an expense report from the structured mock order.
-7. Save the expense report in Notion.
+1. Get everyone’s event roles and stream them into a generated UI.
+2. Switch Jenny Park and Maya Chen atomically, then render the updated UI.
+3. Query registrations and aggregate T-shirt sizes.
+4. Report the quantity needed for each size.
+5. Use Blossom’s allergy insight for the privacy-safe Slack follow-up to Ryan.
+6. Tell a separate Codex thread to “order +10 of every size” through the simulated Custom Ink purchase flow.
+7. While the shirt-order thread is running, receive Jenny’s staged Slack message about Julian Estrada.
+8. Pull up Julian’s waitlisted registration, accept him, and reply to Jenny that he is in.
+9. Receive Ryan’s reply in the same Slack channel confirming that the planned drinks are fine.
+10. Return to the completed shirt-order thread and read its result.
+11. Generate an expense report from the structured mock order.
+12. Save the expense report in Notion.
 
 ## Integration shape
 
@@ -36,10 +41,27 @@ Use a deliberately minimal, fictional event-registration MCP called **Blossom** 
 
 ## Mock order result contract
 
+### Presenter instruction
+
+After Blossom reports the registration totals by size, say:
+
+“Order +10 of every size.”
+
+Interpret this as the registration total for each represented size plus ten extra shirts in that same size. The seeded confirmed registrations produce this order:
+
+- XS: 1 registered + 10 extra = 11
+- S: 2 registered + 10 extra = 12
+- M: 3 registered + 10 extra = 13
+- L: 3 registered + 10 extra = 13
+- XL: 2 registered + 10 extra = 12
+- 2XL: 1 registered + 10 extra = 11
+
+Julian wears an L. Because the order includes ten extra L shirts, admitting him during the Custom Ink task does not require changing the order.
+
 The shirt-order thread should return:
 
 - Items
-- Size quantities
+- Size quantities, including the ten-shirt buffer for each size
 - Subtotal
 - Shipping
 - Tax
@@ -59,9 +81,41 @@ Ryan must be fictional or explicitly pre-consenting before any real Slack send.
 
 “Hey Codex, Blossom Hill Cafe is in a month. Use Blossom to summarize the allergies for confirmed attendees, then Slack Ryan to check whether any planned drinks conflict and flag anything we need to change right away.”
 
+## Live Slack interruption
+
+Place Jenny’s staged message after the separate Custom Ink thread starts and while it is still working. This uses the order’s natural wait time, creates a believable live interruption, and lets the demo show an individual registration lookup and write without slowing the opening.
+
+### Staged messages
+
+- Jenny: “Hey Andrew — my boyfriend Julian Estrada is still on the waitlist. Could you check his registration and see whether there’s room to accept him?”
+- Ryan: “I checked the planned drinks against the allergy list. Everything looks good with the allergy-safe preparation, so we don’t need to change the menu.”
+
+Ryan’s reply resolves the earlier allergy follow-up. It should appear near Jenny’s message in the same channel, but remain a separate conversation beat.
+
+### Presenter instruction
+
+After Jenny’s message appears, say:
+
+“Okay, pull up his registration. Accept it, then send a message back to Jenny saying he’s in.”
+
+The assistant should:
+
+1. Look up **Julian Estrada** and show that he is waitlisted.
+2. Change his status to **confirmed**.
+3. Send Jenny a concise Slack reply confirming that Julian is in.
+4. Briefly acknowledge Ryan’s all-clear when it appears.
+5. Return to the Custom Ink thread once the interruption is resolved.
+
+Suggested reply to Jenny:
+
+“He’s in — I found Julian Estrada’s registration and moved him from the waitlist to confirmed.”
+
+Keep the registration lookup visible before the status change. That makes the user’s authorization and the state transition easy to follow.
+
 ## Minimal Blossom data model
 
 - Event details
+- Staff roles
 - Registrations
 - RSVP status
 - Guest count
@@ -86,15 +140,17 @@ Ryan must be fictional or explicitly pre-consenting before any real Slack send.
 
 - Keep Blossom minimal; avoid adding unrelated event-management features.
 - Keep the mock Custom Ink order deterministic and fast.
+- Interpret “+10 of every size” as ten shirts added to each size represented in the confirmed-registration aggregate.
 - Label the order result clearly enough that it cannot be mistaken for a real purchase.
 - Separate drafting from sending so authorization is visible.
 - Keep the Custom Ink browser/thread step distinct from MCP integrations.
 - Make the thread handoff legible: structured order result in the purchase thread, expense-report generation and Notion save in the main assistant.
+- Treat Jenny’s message as an interruption during the Custom Ink wait, then return explicitly to the order thread.
+- Keep Jenny’s admission request and Ryan’s allergy response as two separate Slack beats, even if the messages arrive close together.
 
 ## Open decisions
 
 - Exact event date and expected attendance.
-- Seed registration mix and resulting T-shirt quantities.
 - Seed drink/dietary/allergy distribution.
 - Exact Custom Ink shirt choice and seeded mock prices.
 - Custom instructions that clearly mark the purchase data and order status as simulated.
@@ -103,13 +159,19 @@ Ryan must be fictional or explicitly pre-consenting before any real Slack send.
 
 ## Current recommended run-of-show
 
-1. Introduce the upcoming Blossom Hill Cafe event.
-2. Ask Blossom for the relevant registration insights, including aggregate T-shirt quantities.
-3. Run the preferred one-shot Blossom-to-Slack allergy follow-up.
-4. Show the separate Codex thread handling the simulated Custom Ink order.
-5. Let that thread return items, size quantities, subtotal, shipping, tax, total, and order status.
-6. Ask the main assistant to inspect the completed thread and generate an expense report.
-7. Save the expense report in Notion.
+1. Say: “Get everyone’s roles for the event and generate a UI for me to look at.”
+2. Let the role UI visibly assemble as JSON components stream into `generate_ui`.
+3. Say: “Switch Jenny and Maya,” then show the updated generated UI.
+4. Ask Blossom for the relevant registration insights, including aggregate T-shirt quantities.
+5. Run the preferred one-shot Blossom-to-Slack allergy follow-up.
+6. Say “Order +10 of every size,” then show the separate Codex thread handling the simulated Custom Ink order.
+7. While the order thread is working, trigger Jenny’s staged message about Julian.
+8. Say: “Okay, pull up his registration. Accept it, then send a message back to Jenny saying he’s in.”
+9. Show Julian’s waitlisted registration, confirm him, and send Jenny the confirmation.
+10. Let Ryan’s all-clear appear in the same channel and acknowledge it briefly.
+11. Return to the order thread and let it report items, size quantities, subtotal, shipping, tax, total, and order status.
+12. Ask the main assistant to inspect the completed thread and generate an expense report.
+13. Save the expense report in Notion.
 
 ## Rehearsal feedback
 

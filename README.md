@@ -1,6 +1,6 @@
 # Blossom MCP
 
-Blossom is a small, deterministic MCP v2 event-registration server for the fictional **Blossom Hill Cafe** pop-up. It is built with the current `mcp-use` v2 API and includes native MCP App views for the event overview, registration detail, and status-update result.
+Blossom is a small, deterministic MCP v2 event-registration server for the fictional **Blossom Hill Cafe** pop-up. It is built with the current `mcp-use` v2 API and includes native MCP App views for the event overview, registration detail, status-update result, and real-time generated UI.
 
 Suggested opening line:
 
@@ -8,14 +8,30 @@ Suggested opening line:
 
 ## Tool surface
 
-Blossom exposes exactly four tools:
+Blossom exposes seven tools:
 
 - `get_event_overview` — shallow event facts and a polished event card. Its `confirmedCount` is an explicit 150-person demo estimate (`confirmedCountBasis: "demo_estimate"`).
 - `list_registrations` — confirmed by default, explicit field selection, and pagination. It returns rows only; the model computes counts and aggregates.
 - `get_registration` — exact individual lookup by ID, full name, or email. Julian Estrada is initially waitlisted.
 - `update_registration_status` — an idempotent local write with the updated registration and a result card.
+- `get_roles` — all Blossom Hill Cafe staff assignments by default, with optional person filtering.
+- `update_roles` — an atomic, idempotent update for one or more staff assignments.
+- `generate_ui` — a safe JSON Render presentation tool whose parent-first component array renders progressively while its tool input streams.
 
 There is intentionally no `summarize_registrations` tool. Custom Ink, Notion, purchase simulation, and notification watching remain outside this server. A small, non-MCP Slack demo controller is served alongside the MCP endpoint for staging the Jenny and Ryan messages.
+
+## Event roles and generated UI
+
+The in-memory role seed is:
+
+- Andrew Khadder — Welcome guests at the door
+- Ryan Hoang — Serve drinks
+- Maya Chen — Manage pastries
+- Jenny Park — Photograph the event
+
+Role writes are process-local and reset with the server. To switch Maya and Jenny, call `update_roles` once with both new assignments, then call `generate_ui` with the updated role data.
+
+`generate_ui` uses a constrained JSON Render catalog: `Canvas`, `Card`, `Grid`, `Stack`, `Heading`, `Text`, `Badge`, `Avatar`, `Metric`, `Table`, and `Divider`. The model sends the root Canvas first followed by components in parent-first order. While the call is pending, `mcp-use` exposes progressive tool-input snapshots to the MCP App; the view renders every complete component immediately and ignores the incomplete trailing component until it becomes valid. When progressive input is unavailable, the finished tool result renders the complete validated spec.
 
 ## Seed data and privacy
 
@@ -113,9 +129,11 @@ npm run verify
 
 ## Demo sequence
 
-1. Call `get_event_overview`.
-2. Call `list_registrations` with only the fields needed for an allergy or T-shirt aggregate.
-3. If Jenny raises Julian’s RSVP, call `get_registration` with `{"query":"Julian Estrada"}`.
-4. After clear user instruction to accept him, call `update_registration_status` with `{"query":"Julian Estrada","status":"confirmed"}`.
+1. Call `get_roles`, then turn the result into a visible `generate_ui` call.
+2. When asked to switch Jenny and Maya, call `update_roles` once with both assignments, then call `generate_ui` again.
+3. Call `get_event_overview`.
+4. Call `list_registrations` with only the fields needed for an allergy or T-shirt aggregate.
+5. If Jenny raises Julian’s RSVP, call `get_registration` with `{"query":"Julian Estrada"}`.
+6. After clear user instruction to accept him, call `update_registration_status` with `{"query":"Julian Estrada","status":"confirmed"}`.
 
-The write is process-local and intentionally deterministic: restarting Blossom restores Julian to `waitlisted`.
+The writes are process-local and intentionally deterministic: restarting Blossom restores the initial roles and Julian to `waitlisted`.

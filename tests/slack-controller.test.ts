@@ -82,8 +82,9 @@ describe("Slack demo controller", () => {
           : {
               ok: true,
               messages: [
-                { ts: "1", user: "UJENNY" },
-                { ts: "2", user: "URYAN" },
+                { ts: "1", user: "UJENNY", text: DEMO_MESSAGES.jenny },
+                { ts: "2", user: "URYAN", text: DEMO_MESSAGES.ryan },
+                { ts: "join", user: "UJENNY", subtype: "channel_join" },
               ],
               response_metadata: { next_cursor: "page-2" },
             };
@@ -142,8 +143,8 @@ describe("Slack demo controller", () => {
         result = {
           ok: true,
           messages: [
-            { ts: "1", user: "UJENNY" },
-            { ts: "2", user: "URYAN" },
+            { ts: "1", user: "UJENNY", text: DEMO_MESSAGES.jenny },
+            { ts: "2", user: "URYAN", text: DEMO_MESSAGES.ryan },
           ],
           response_metadata: { next_cursor: "" },
         };
@@ -174,4 +175,5 @@ describe("Slack demo controller", () => {
       ["xoxb-jenny", "xoxb-ryan"]
     );
   });
+
 });

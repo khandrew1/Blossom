@@ -63,6 +63,8 @@ export async function postDemoMessage(
 interface SlackMessage {
   ts?: string;
   user?: string;
+  text?: string;
+  subtype?: string;
 }
 
 interface SlackApiResult {
@@ -156,7 +158,10 @@ export async function resetDemoMessages(
   for (const agent of SLACK_AGENTS) {
     const token = config.tokens[agent];
     const owned = messages.filter(
-      (message) => message.user === userIds.get(agent) && message.ts
+      (message) =>
+        message.user === userIds.get(agent) &&
+        message.text === DEMO_MESSAGES[agent] &&
+        message.ts
     );
 
     for (const message of owned) {

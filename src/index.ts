@@ -9,6 +9,12 @@ import {
   updateRegistrationStatus as writeRegistrationStatus,
 } from "./data.js";
 import {
+  EVENT_ROLES,
+  getRoles as readRoles,
+  STAFF_NAMES,
+  updateRoles as writeRoles,
+} from "./roles.js";
+import {
   isSlackAgent,
   loadSlackControllerConfig,
   postDemoMessage,
@@ -16,6 +22,11 @@ import {
   SLACK_CONTROLLER_HTML,
   type SlackAgent,
 } from "./slack-controller.js";
+import {
+  componentsToSpec,
+  uiComponentSchema,
+  uiSpecSchema,
+} from "./ui-catalog.js";
 
 const registrationSchema = z.object({
   id: z.string(),
@@ -44,6 +55,32 @@ const overviewSchema = z.object({
     motif: z.string(),
   }),
 });
+
+const roleAssignmentSchema = z.object({
+  name: z.enum(STAFF_NAMES),
+  role: z.enum(EVENT_ROLES),
+});
+
+const rolesOutputSchema = z.object({
+  roles: z.array(roleAssignmentSchema),
+});
+
+const uniqueRoleUpdatesSchema = z
+  .array(roleAssignmentSchema)
+  .min(1)
+  .max(STAFF_NAMES.length)
+  .superRefine((updates, context) => {
+    const names = new Set<string>();
+    for (const update of updates) {
+      if (names.has(update.name)) {
+        context.addIssue({
+          code: "custom",
+          message: `Include ${update.name} only once.`,
+        });
+      }
+      names.add(update.name);
+    }
+  });
 
 const server = new MCPServer({
   name: "blossom",
@@ -265,6 +302,163 @@ export const updateRegistrationStatus = server.tool(
           : `${update.registration.name} was already ${status}; no change was needed.`,
       }],
       structuredContent: { ...update, changed },
+    };
+  }
+);
+
+export const getRoles = server.tool(
+  {
+    name: "get_roles",
+    title: "Get event roles",
+    description:
+      "Get the current Blossom Hill Cafe staff assignments. Omit names to return everyone. Use this before generate_ui when the user asks to see the team or event roles.",
+    inputSchema: z.object({
+      names: z
+        .array(z.enum(STAFF_NAMES))
+        .min(1)
+        .optional()
+        .describe("Optional people to include; omit to return the full team."),
+    }),
+    outputSchema: rolesOutputSchema,
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  async ({ names }) => {
+    const roles = readRoles(names);
+    return {
+      content: [{
+        type: "text",
+        text: roles
+          .map(({ name, role }) => `${name}: ${role}`)
+          .join("\n"),
+      }],
+      structuredContent: { roles },
+    };
+  }
+);
+
+const updateRolesOutputSchema = z.object({
+  previousRoles: z.array(roleAssignmentSchema),
+  roles: z.array(roleAssignmentSchema),
+  changed: z.boolean(),
+});
+
+export const updateRoles = server.tool(
+  {
+    name: "update_roles",
+    title: "Update event roles",
+    description:
+      "Atomically update one or more Blossom Hill Cafe staff assignments. To switch two people, include both people with each other's current role in one call. After a successful update, call generate_ui again when the user is looking at a generated roles UI.",
+    inputSchema: z.object({
+      updates: uniqueRoleUpdatesSchema.describe(
+        "Complete set of role changes to apply together."
+      ),
+    }),
+    outputSchema: updateRolesOutputSchema,
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async ({ updates }) => {
+    const result = writeRoles(updates);
+    return {
+      content: [{
+        type: "text",
+        text: result.changed
+          ? `Updated ${updates.length} event role${updates.length === 1 ? "" : "s"}.`
+          : "Those event roles were already assigned; no change was needed.",
+      }],
+      structuredContent: result,
+    };
+  }
+);
+
+const generatedUiOutputSchema = z.object({
+  spec: uiSpecSchema,
+});
+
+const generatedUiInputSchema = z
+  .object({
+    root: z
+      .string()
+      .min(1)
+      .describe("Key of the root Canvas component."),
+    components: z
+      .array(uiComponentSchema)
+      .min(1)
+      .max(60)
+      .describe(
+        "Flat components in parent-first render order. The host streams this array to the view as it is generated."
+      ),
+  })
+  .superRefine(({ root, components }, context) => {
+    const keys = new Set<string>();
+    for (const [index, component] of components.entries()) {
+      if (keys.has(component.key)) {
+        context.addIssue({
+          code: "custom",
+          path: ["components", index, "key"],
+          message: `Duplicate component key: ${component.key}`,
+        });
+      }
+      keys.add(component.key);
+    }
+
+    const rootComponent = components.find(({ key }) => key === root);
+    if (rootComponent?.type !== "Canvas") {
+      context.addIssue({
+        code: "custom",
+        path: ["root"],
+        message: "root must identify a Canvas component.",
+      });
+    }
+    if (components[0]?.key !== root) {
+      context.addIssue({
+        code: "custom",
+        path: ["components", 0, "key"],
+        message: "The root Canvas must be the first streamed component.",
+      });
+    }
+
+    for (const [index, component] of components.entries()) {
+      for (const child of component.children) {
+        if (!keys.has(child)) {
+          context.addIssue({
+            code: "custom",
+            path: ["components", index, "children"],
+            message: `Unknown child component key: ${child}`,
+          });
+        }
+      }
+    }
+  });
+
+export const generateUi = server.tool(
+  {
+    name: "generate_ui",
+    title: "Generate custom UI",
+    description:
+      "Generate a read-only custom UI that renders in real time while JSON components stream into this tool's input. First get source data with the appropriate Blossom tool. Then provide root plus a parent-first components array using exactly one Canvas root and only Canvas, Card, Grid, Stack, Heading, Text, Badge, Avatar, Metric, Table, and Divider. Put the root Canvas first so it appears immediately; order each parent before its children. Use literal props from source data. Every component needs a unique key, props, and children; leaf components use an empty children array.",
+    inputSchema: generatedUiInputSchema,
+    outputSchema: generatedUiOutputSchema,
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    view: {
+      name: "generated-ui",
+      description:
+        "A safe model-composed UI rendered from the Blossom presentation catalog.",
+      prefersBorder: false,
+    },
+  },
+  async ({ root, components }) => {
+    const spec = componentsToSpec(root, components);
+    return {
+      content: [{
+        type: "text",
+        text: `Rendered a custom UI with ${components.length} components.`,
+      }],
+      structuredContent: { spec },
     };
   }
 );
