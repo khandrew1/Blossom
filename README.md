@@ -1,6 +1,6 @@
 # Blossom MCP
 
-Blossom is a small, deterministic MCP v2 event-registration server for the fictional **Blossom Hill Cafe** pop-up. It is built with the current `mcp-use` v2 API and includes native MCP App views for the event overview, registration detail, status-update result, and real-time generated UI.
+Blossom is a small, deterministic MCP v2 event-registration server for the fictional **Blossom Hill Cafe** pop-up. It is built with the current `mcp-use` v2 API and includes native MCP App views for the event overview, registration detail, and real-time generated UI.
 
 Suggested opening line:
 
@@ -13,7 +13,7 @@ Blossom exposes seven tools:
 - `get_event_overview` — shallow event facts and a polished event card. Its `confirmedCount` is an explicit 150-person demo estimate (`confirmedCountBasis: "demo_estimate"`).
 - `list_registrations` — confirmed by default, explicit field selection, and pagination. It returns rows only; the model computes counts and aggregates.
 - `get_registration` — exact individual lookup by ID, full name, or email. Julian Estrada is initially waitlisted.
-- `update_registration_status` — an idempotent local write with the updated registration and a result card.
+- `update_registration_status` — an idempotent local write with the updated registration.
 - `get_roles` — all Blossom Hill Cafe staff assignments by default, with optional person filtering.
 - `update_roles` — an atomic, idempotent update for one or more staff assignments.
 - `generate_ui` — a safe JSON Render presentation tool whose parent-first component array renders progressively while its tool input streams.
