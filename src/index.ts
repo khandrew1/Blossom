@@ -82,6 +82,8 @@ const uniqueRoleUpdatesSchema = z
     }
   });
 
+const viewDomain = "https://blossom-hill-demo.run.dev.mcp-use.com";
+
 const server = new MCPServer({
   name: "blossom",
   title: "Blossom",
@@ -166,9 +168,14 @@ export const getEventOverview = server.tool(
       "Get shallow facts for the Blossom Hill Cafe event: name, date, time, location, a 150-person displayed demo estimate for confirmed guests, planning status, and visual theme. The estimate is independent of the small registration seed; use list_registrations for dataset-derived counts. Use this first when the user asks to pull up event information.",
     inputSchema: z.object({}),
     outputSchema: overviewSchema,
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    _meta: {
+      "openai/toolInvocation/invoking": "Loading event overview",
+      "openai/toolInvocation/invoked": "Event overview ready",
+    },
     view: {
       name: "event-overview",
+      domain: viewDomain,
       description: "A polished event card for the Blossom Hill Cafe pop-up.",
       prefersBorder: false,
     },
@@ -207,7 +214,7 @@ export const listRegistrations = server.tool(
       pageSize: z.number().int().min(1).max(100).default(25),
     }),
     outputSchema: listOutputSchema,
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   async (input) => {
     const result = readRegistrations(input);
@@ -231,9 +238,14 @@ export const getRegistration = server.tool(
       query: z.string().min(1).describe("Exact registration ID, full name, or email address."),
     }),
     outputSchema: registrationSchema,
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    _meta: {
+      "openai/toolInvocation/invoking": "Loading registration",
+      "openai/toolInvocation/invoked": "Registration ready",
+    },
     view: {
       name: "registration-detail",
+      domain: viewDomain,
       description: "A focused registration detail card.",
       prefersBorder: false,
     },
@@ -315,7 +327,7 @@ export const getRoles = server.tool(
         .describe("Optional people to include; omit to return the full team."),
     }),
     outputSchema: rolesOutputSchema,
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
   async ({ names }) => {
     const roles = readRoles(names);
@@ -438,9 +450,14 @@ export const generateUi = server.tool(
       "Generate a read-only custom UI that renders in real time while JSON components stream into this tool's input. First get source data with the appropriate Blossom tool. Then provide root plus a parent-first components array using exactly one Canvas root and only Canvas, Card, Grid, Stack, Heading, Text, Badge, Avatar, Metric, Table, and Divider. Put the root Canvas first so it appears immediately; order each parent before its children. Use literal props from source data. Every component needs a unique key, props, and children; leaf components use an empty children array.",
     inputSchema: generatedUiInputSchema,
     outputSchema: generatedUiOutputSchema,
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    _meta: {
+      "openai/toolInvocation/invoking": "Rendering custom UI",
+      "openai/toolInvocation/invoked": "Custom UI ready",
+    },
     view: {
       name: "generated-ui",
+      domain: viewDomain,
       description:
         "A safe model-composed UI rendered from the Blossom presentation catalog.",
       prefersBorder: false,
