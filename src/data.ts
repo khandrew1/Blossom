@@ -48,7 +48,7 @@ export interface EventOverview {
 export const EVENT = {
   id: "blossom-hill-cafe-2026",
   name: "Blossom Hill Cafe",
-  date: "August 26, 2026",
+  date: "October 28, 2026",
   time: "6:00–9:00 PM",
   timeZone: "America/Los_Angeles",
   location: "The Glasshouse · 84 Orchard Lane · San Jose, CA",

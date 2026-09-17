@@ -49,7 +49,7 @@ describe("event overview", () => {
   it("returns deterministic shallow event facts and an explicit demo estimate", () => {
     const overview = getEventOverview();
     assert.equal(overview.name, "Blossom Hill Cafe");
-    assert.equal(overview.date, "August 26, 2026");
+    assert.equal(overview.date, "October 28, 2026");
     assert.equal(overview.confirmedCount, 150);
     assert.equal(overview.confirmedCountBasis, "demo_estimate");
     assert.equal(overview.planningStatus, "Finalizing guest details");
