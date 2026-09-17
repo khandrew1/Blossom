@@ -258,7 +258,7 @@ export const SLACK_CONTROLLER_HTML = String.raw`<!doctype html>
           const result = await response.json();
           if (!response.ok || !result.ok) throw new Error(result.error || "Reset failed");
           status.className = "success";
-          status.textContent = "RESET — " + result.deleted + " MESSAGE" + (result.deleted === 1 ? "" : "S") + " DELETED ✓";
+          status.textContent = "RESET — JULIAN WAITLISTED · " + result.deleted + " MESSAGE" + (result.deleted === 1 ? "" : "S") + " DELETED ✓";
         } catch (error) {
           status.className = "error";
           status.textContent = "RESET FAILED — " + error.message;

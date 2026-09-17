@@ -153,6 +153,7 @@ server.post("/demo/slack/reset", async (context) => {
 
   try {
     const deleted = await resetDemoMessages(config);
+    writeRegistrationStatus("Julian Estrada", "waitlisted");
     return context.json({ ok: true, deleted });
   } catch (error) {
     console.error("Failed to reset Slack demo messages:", error);
